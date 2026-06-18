@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business Architecture Repository</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-indigo-700 text-white px-6 py-4 shadow-md">
+    <h1 class="text-xl font-semibold tracking-tight">Business Architecture Repository</h1>
+    <p class="text-indigo-200 text-sm mt-0.5">Manage architecture artefacts across all domains</p>
+  </header>
+
+  <!-- Loading state -->
+  <div id="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
+    <svg class="animate-spin w-8 h-8 mb-4 text-indigo-400" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+    </svg>
+    <p class="text-sm">Loading artefacts…</p>
+  </div>
+
+  <!-- Main app (shown after init) -->
+  <div id="app" class="hidden">
+
+    <!-- Domain tabs -->
+    <nav class="bg-white border-b px-6 flex gap-1 shadow-sm">
+      <button id="tab-capabilities"  onclick="setDomain('capabilities')"  class="px-5 py-3 text-sm font-medium border-b-2 transition-colors">Capabilities</button>
+      <button id="tab-organization"  onclick="setDomain('organization')"  class="px-5 py-3 text-sm font-medium border-b-2 transition-colors">Organization</button>
+      <button id="tab-value-streams" onclick="setDomain('value-streams')" class="px-5 py-3 text-sm font-medium border-b-2 transition-colors">Value Streams</button>
+      <button id="tab-information"   onclick="setDomain('information')"   class="px-5 py-3 text-sm font-medium border-b-2 transition-colors">Information</button>
+    </nav>
+
+    <!-- Content -->
+    <main class="max-w-5xl mx-auto p-6">
+      <div class="flex items-start justify-between mb-5">
+        <div>
+          <h2 id="domain-title" class="text-xl font-semibold text-slate-800"></h2>
+          <p id="domain-desc" class="text-sm text-slate-500 mt-0.5"></p>
+        </div>
+        <button id="btn-new" onclick="openModal(null)"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+          + New Artefact
+        </button>
+      </div>
+      <div id="artifact-list" class="bg-white rounded-xl border shadow-sm overflow-hidden"></div>
+    </main>
+  </div>
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="hidden fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <h3 id="modal-title" class="text-lg font-semibold text-slate-800"></h3>
+        <button onclick="closeModal()"
+          class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition text-xl leading-none">
+          &times;
+        </button>
+      </div>
+      <div id="modal-body" class="px-6 py-5"></div>
+      <div id="modal-error" class="hidden mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t bg-slate-50 rounded-b-2xl">
+        <button onclick="closeModal()"
+          class="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition">
+          Cancel
+        </button>
+        <button id="btn-save" onclick="saveArtifact()"
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+          Save Artefact
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 max-w-sm px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50"></div>
+
+<script>
+// ─── CONSTANTS ──────────────────────────────────────────────────────────────
+
+const DOMAINS = ['capabilities', 'organization', 'value-streams', 'information'];
+
+const META = {
+  capabilities: {
+    label: 'Capabilities', singular: 'Capability',
+    desc: 'Hierarchical business capability definitions',
+    titleField: 'name', keyField: 'status', idPrefix: 'CAP',
+  },
+  organization: {
+    label: 'Organization', singular: 'Org Unit',
+    desc: 'Organisation units, departments, and teams',
+    titleField: 'name', keyField: 'type', idPrefix: 'ORG',
+  },
+  'value-streams': {
+    label: 'Value Streams', singular: 'Value Stream',
+    desc: 'End-to-end business value delivery flows',
+    titleField: 'name', keyField: null, idPrefix: 'VS',
+  },
+  information: {
+    label: 'Information', singular: 'Information Concept',
+    desc: 'Business glossary and information concepts',
+    titleField: 'term', keyField: 'confidentiality', idPrefix: 'INF',
+  },
+};
+
+const BADGE_COLORS = {
+  active: 'bg-emerald-100 text-emerald-700',
+  proposed: 'bg-blue-100 text-blue-700',
+  deprecated: 'bg-amber-100 text-amber-700',
+  sunset: 'bg-red-100 text-red-700',
+  division: 'bg-violet-100 text-violet-700',
+  department: 'bg-indigo-100 text-indigo-700',
+  team: 'bg-cyan-100 text-cyan-700',
+  'centre-of-excellence': 'bg-pink-100 text-pink-700',
+  external: 'bg-slate-100 text-slate-600',
+  public: 'bg-emerald-100 text-emerald-700',
+  internal: 'bg-blue-100 text-blue-700',
+  confidential: 'bg-orange-100 text-orange-700',
+  restricted: 'bg-red-100 text-red-700',
+};
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+
+const state = { domain: 'capabilities', artifacts: {}, editingFile: null };
+
+// ─── API ────────────────────────────────────────────────────────────────────
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== null) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw data;
+  return data;
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    await Promise.all(DOMAINS.map(async d => {
+      state.artifacts[d] = await api(`/api/${d}`);
+    }));
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    setDomain('capabilities');
+  } catch (err) {
+    document.getElementById('loading').innerHTML =
+      `<p class="text-red-500 font-medium text-sm">Failed to load artefacts: ${escHtml(err.message || JSON.stringify(err))}</p>`;
+  }
+}
+
+// ─── TABS & DOMAIN ──────────────────────────────────────────────────────────
+
+function renderTabs() {
+  DOMAINS.forEach(d => {
+    const btn = document.getElementById(`tab-${d}`);
+    if (!btn) return;
+    btn.className = `px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+      d === state.domain
+        ? 'border-indigo-600 text-indigo-600'
+        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+    }`;
+  });
+}
+
+function setDomain(domain) {
+  state.domain = domain;
+  renderTabs();
+  document.getElementById('domain-title').textContent = META[domain].label;
+  document.getElementById('domain-desc').textContent = META[domain].desc;
+  document.getElementById('btn-new').textContent = `+ New ${META[domain].singular}`;
+  renderList();
+}
+
+// ─── ARTIFACT LIST ──────────────────────────────────────────────────────────
+
+function renderList() {
+  const { domain } = state;
+  const artifacts = state.artifacts[domain] || [];
+  const { titleField, keyField } = META[domain];
+  const container = document.getElementById('artifact-list');
+
+  if (!artifacts.length) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+        <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p class="text-sm font-medium">No ${META[domain].label.toLowerCase()} yet</p>
+        <p class="text-xs mt-1">Click "+ New ${META[domain].singular}" to add the first one</p>
+      </div>`;
+    return;
+  }
+
+  const extraCol = domain === 'value-streams'
+    ? '<th class="px-5 py-3 text-left">Stages</th>'
+    : (keyField ? `<th class="px-5 py-3 text-left">${keyField.replace('_', ' ')}</th>` : '');
+
+  container.innerHTML = `
+    <table class="w-full">
+      <thead>
+        <tr class="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <th class="px-5 py-3 text-left">ID</th>
+          <th class="px-5 py-3 text-left">Name</th>
+          ${extraCol}
+          <th class="px-5 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        ${artifacts.map(a => {
+          const extraCell = domain === 'value-streams'
+            ? `<td class="px-5 py-3.5 text-xs text-slate-500">${(a.stages || []).length} stages</td>`
+            : (keyField ? `<td class="px-5 py-3.5">${badge(a[keyField])}</td>` : '');
+          return `
+            <tr class="hover:bg-slate-50 transition-colors group">
+              <td class="px-5 py-3.5">
+                <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">${escHtml(a.id)}</span>
+              </td>
+              <td class="px-5 py-3.5 font-medium text-slate-800 text-sm">${escHtml(a[titleField] || '')}</td>
+              ${extraCell}
+              <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <button onclick="openModal('${escHtml(a._filename)}')"
+                  class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Edit
+                </button>
+                <button onclick="confirmDelete('${escHtml(a._filename)}', '${escHtml(a.id)}')"
+                  class="text-red-500 hover:text-red-700 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  Delete
+                </button>
+              </td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ─── MODAL ──────────────────────────────────────────────────────────────────
+
+function openModal(filename) {
+  state.editingFile = filename;
+  const artifact = filename
+    ? (state.artifacts[state.domain].find(a => a._filename === filename) || {})
+    : {};
+  document.getElementById('modal-title').textContent = filename
+    ? `Edit ${META[state.domain].singular}: ${artifact.id || ''}`
+    : `New ${META[state.domain].singular}`;
+  document.getElementById('modal-body').innerHTML = renderForm(state.domain, artifact);
+  document.getElementById('modal-error').classList.add('hidden');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  state.editingFile = null;
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ─── SAVE ───────────────────────────────────────────────────────────────────
+
+async function saveArtifact() {
+  const data = collectForm(state.domain);
+  const btn = document.getElementById('btn-save');
+  const errDiv = document.getElementById('modal-error');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  errDiv.classList.add('hidden');
+  try {
+    if (state.editingFile) {
+      await api(`/api/${state.domain}/${state.editingFile}`, 'PUT', data);
+    } else {
+      await api(`/api/${state.domain}`, 'POST', data);
+    }
+    state.artifacts[state.domain] = await api(`/api/${state.domain}`);
+    closeModal();
+    renderList();
+    toast(`${META[state.domain].singular} saved`);
+  } catch (err) {
+    errDiv.textContent = err.error || JSON.stringify(err);
+    errDiv.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Artefact';
+  }
+}
+
+// ─── DELETE ─────────────────────────────────────────────────────────────────
+
+async function confirmDelete(filename, id) {
+  if (!confirm(`Delete ${id}? This cannot be undone.`)) return;
+  try {
+    await api(`/api/${state.domain}/${filename}`, 'DELETE');
+    state.artifacts[state.domain] = await api(`/api/${state.domain}`);
+    renderList();
+    toast(`${id} deleted`);
+  } catch (err) {
+    toast(err.error || 'Delete failed', 'error');
+  }
+}
+
+// ─── FORM DISPATCH ──────────────────────────────────────────────────────────
+
+function renderForm(domain, data) {
+  return { capabilities: renderCapabilityForm, organization: renderOrgForm,
+           'value-streams': renderValueStreamForm, information: renderInfoForm }[domain](data);
+}
+
+function collectForm(domain) {
+  return { capabilities: collectCapabilityForm, organization: collectOrgForm,
+           'value-streams': collectValueStreamForm, information: collectInfoForm }[domain]();
+}
+
+// ─── FORM: CAPABILITIES ─────────────────────────────────────────────────────
+
+function renderCapabilityForm(data) {
+  const caps = (state.artifacts['capabilities'] || []).filter(c => c._filename !== state.editingFile);
+  return `
+    <div class="grid grid-cols-2 gap-4">
+      ${fld('ID', txtIn('id', data.id || nextId('capabilities'), 'CAP-NNN'), true)}
+      ${fld('Name', txtIn('name', data.name || '', 'e.g. Customer Invoicing'), true)}
+    </div>
+    ${fld('Description', txta('description', data.description || '', 3), true)}
+    <div class="grid grid-cols-3 gap-4">
+      ${fld('Level (1–4)', numIn('level', data.level ?? 2, 1, 4), true)}
+      ${fld('Status', selIn('status', ['active','proposed','deprecated','sunset'], data.status || 'active'), true)}
+      ${fld('Maturity (1–5)', numIn('maturity', data.maturity ?? 3, 1, 5), true)}
+    </div>
+    ${fld('Parent Capability', refSel('parent_id', caps, 'name', data.parent_id || ''))}
+    ${fld('Tags', tagIn('tags', data.tags || []), false, 'Separate with commas')}`;
+}
+
+function collectCapabilityForm() {
+  const b = document.getElementById('modal-body');
+  const g = n => b.querySelector(`[name="${n}"]`)?.value?.trim() || '';
+  const d = { id: g('id'), name: g('name'), description: g('description'),
+              level: parseInt(g('level'), 10), status: g('status'), maturity: parseInt(g('maturity'), 10) };
+  if (g('parent_id')) d.parent_id = g('parent_id');
+  const tags = g('tags').split(',').map(t => t.trim()).filter(Boolean);
+  if (tags.length) d.tags = tags;
+  return d;
+}
+
+// ─── FORM: ORGANIZATION ─────────────────────────────────────────────────────
+
+function renderOrgForm(data) {
+  const orgs = (state.artifacts['organization'] || []).filter(o => o._filename !== state.editingFile);
+  return `
+    <div class="grid grid-cols-2 gap-4">
+      ${fld('ID', txtIn('id', data.id || nextId('organization'), 'ORG-NNN'), true)}
+      ${fld('Name', txtIn('name', data.name || '', 'e.g. Finance Department'), true)}
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      ${fld('Type', selIn('type', ['division','department','team','centre-of-excellence','external'], data.type || ''), true)}
+      ${fld('Lead', txtIn('lead', data.lead || '', 'e.g. VP Finance'))}
+    </div>
+    ${fld('Parent Org Unit', refSel('parent_org_id', orgs, 'name', data.parent_org_id || ''))}
+    ${fld('Cost Center', txtIn('cost_center', data.cost_center || '', 'e.g. CC-400'))}`;
+}
+
+function collectOrgForm() {
+  const b = document.getElementById('modal-body');
+  const g = n => b.querySelector(`[name="${n}"]`)?.value?.trim() || '';
+  const d = { id: g('id'), name: g('name'), type: g('type') };
+  if (g('lead')) d.lead = g('lead');
+  if (g('parent_org_id')) d.parent_org_id = g('parent_org_id');
+  if (g('cost_center')) d.cost_center = g('cost_center');
+  return d;
+}
+
+// ─── FORM: VALUE STREAMS ────────────────────────────────────────────────────
+
+function renderValueStreamForm(data) {
+  const stages = (data.stages || []).length >= 2
+    ? data.stages
+    : [{ sequence: 1, stage_name: '', description: '', supporting_capabilities: [] },
+       { sequence: 2, stage_name: '', description: '', supporting_capabilities: [] }];
+  return `
+    <div class="grid grid-cols-2 gap-4">
+      ${fld('ID', txtIn('id', data.id || nextId('value-streams'), 'VS-NNN'), true)}
+      ${fld('Name', txtIn('name', data.name || '', 'e.g. Order to Cash'), true)}
+    </div>
+    ${fld('Trigger', txta('trigger', data.trigger || '', 2, 'What initiates this value stream?'), true)}
+    ${fld('Outcome', txta('outcome', data.outcome || '', 2, 'What is the end result?'), true)}
+    <div class="mt-1">
+      <div class="flex items-center justify-between mb-3">
+        <label class="text-sm font-medium text-slate-700">
+          Stages <span class="text-red-500">*</span>
+          <span class="text-slate-400 font-normal ml-1">(minimum 2)</span>
+        </label>
+        <button type="button" onclick="addStage()"
+          class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Add Stage
+        </button>
+      </div>
+      <div id="stages-container" class="space-y-3">
+        ${stages.map((s, i) => stageCard(s, i)).join('')}
+      </div>
+    </div>`;
+}
+
+function stageCard(stage, index) {
+  const caps = state.artifacts['capabilities'] || [];
+  const checkboxes = caps.length
+    ? caps.map(c => `
+        <label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded">
+          <input type="checkbox" class="stage-cap-checkbox" value="${escHtml(c.id)}"
+            ${(stage.supporting_capabilities || []).includes(c.id) ? 'checked' : ''}>
+          <span class="font-mono text-slate-500">${escHtml(c.id)}</span>
+          <span class="text-slate-600">${escHtml(c.name || '')}</span>
+        </label>`).join('')
+    : '<span class="text-xs text-slate-400">No capabilities defined yet</span>';
+
+  return `
+    <div class="stage-card border border-slate-200 rounded-xl p-4 bg-slate-50">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stage-number text-xs font-semibold text-slate-500 uppercase tracking-wide">Stage ${index + 1}</span>
+        <button type="button" onclick="removeStage(this)"
+          class="text-xs font-medium text-red-400 hover:text-red-600 transition">Remove</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Stage Name <span class="text-red-500">*</span></label>
+          <input type="text" class="stage-name-input w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            value="${escHtml(stage.stage_name || '')}" placeholder="e.g. Order Receipt">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Description <span class="text-red-500">*</span></label>
+          <textarea class="stage-desc-input w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-y"
+            rows="2" placeholder="What happens in this stage?">${escHtml(stage.description || '')}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Supporting Capabilities</label>
+          <div class="border border-slate-200 rounded-lg p-2 bg-white max-h-28 overflow-y-auto space-y-0.5">
+            ${checkboxes}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function addStage() {
+  const container = document.getElementById('stages-container');
+  const index = container.querySelectorAll('.stage-card').length;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = stageCard({ stage_name: '', description: '', supporting_capabilities: [] }, index);
+  container.appendChild(wrapper.firstElementChild);
+}
+
+function removeStage(btn) {
+  const container = document.getElementById('stages-container');
+  if (container.querySelectorAll('.stage-card').length <= 2) {
+    toast('Value streams require at least 2 stages', 'error');
+    return;
+  }
+  btn.closest('.stage-card').remove();
+  container.querySelectorAll('.stage-card .stage-number').forEach((el, i) => {
+    el.textContent = `Stage ${i + 1}`;
+  });
+}
+
+function collectValueStreamForm() {
+  const b = document.getElementById('modal-body');
+  const g = n => b.querySelector(`[name="${n}"]`)?.value?.trim() || '';
+  const stages = Array.from(b.querySelectorAll('.stage-card')).map((card, i) => {
+    const stage = {
+      sequence: i + 1,
+      stage_name: card.querySelector('.stage-name-input')?.value?.trim() || '',
+      description: card.querySelector('.stage-desc-input')?.value?.trim() || '',
+    };
+    const caps = Array.from(card.querySelectorAll('.stage-cap-checkbox:checked')).map(cb => cb.value);
+    if (caps.length) stage.supporting_capabilities = caps;
+    return stage;
+  });
+  return { id: g('id'), name: g('name'), trigger: g('trigger'), outcome: g('outcome'), stages };
+}
+
+// ─── FORM: INFORMATION ──────────────────────────────────────────────────────
+
+function renderInfoForm(data) {
+  const orgs = state.artifacts['organization'] || [];
+  return `
+    <div class="grid grid-cols-2 gap-4">
+      ${fld('ID', txtIn('id', data.id || nextId('information'), 'INF-NNN'), true)}
+      ${fld('Term', txtIn('term', data.term || '', 'e.g. Customer Order'), true)}
+    </div>
+    ${fld('Definition', txta('definition', data.definition || '', 4), true)}
+    ${fld('Confidentiality', selIn('confidentiality', ['public','internal','confidential','restricted'], data.confidentiality || 'internal'), true)}
+    ${fld('Attributes', tagIn('attributes', data.attributes || []), false, 'Separate with commas')}
+    ${fld('Owner Org Unit', refSel('owner_org_id', orgs, 'name', data.owner_org_id || ''))}`;
+}
+
+function collectInfoForm() {
+  const b = document.getElementById('modal-body');
+  const g = n => b.querySelector(`[name="${n}"]`)?.value?.trim() || '';
+  const d = { id: g('id'), term: g('term'), definition: g('definition'), confidentiality: g('confidentiality') };
+  const attrs = g('attributes').split(',').map(t => t.trim()).filter(Boolean);
+  if (attrs.length) d.attributes = attrs;
+  if (g('owner_org_id')) d.owner_org_id = g('owner_org_id');
+  return d;
+}
+
+// ─── FORM HELPERS ───────────────────────────────────────────────────────────
+
+const IC = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent';
+
+function fld(label, input, required = false, hint = '') {
+  return `<div class="mb-4">
+    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+      ${escHtml(label)}${required ? ' <span class="text-red-500">*</span>' : ''}
+    </label>
+    ${input}
+    ${hint ? `<p class="text-xs text-slate-400 mt-1">${escHtml(hint)}</p>` : ''}
+  </div>`;
+}
+
+function txtIn(name, value = '', placeholder = '') {
+  return `<input type="text" name="${name}" value="${escHtml(value)}" placeholder="${escHtml(placeholder)}" class="${IC}">`;
+}
+
+function numIn(name, value = '', min = 1, max = 10) {
+  return `<input type="number" name="${name}" value="${escHtml(String(value))}" min="${min}" max="${max}" class="${IC}">`;
+}
+
+function txta(name, value = '', rows = 3, placeholder = '') {
+  return `<textarea name="${name}" rows="${rows}" placeholder="${escHtml(placeholder)}" class="${IC} resize-y">${escHtml(value)}</textarea>`;
+}
+
+function selIn(name, options, selected = '') {
+  const opts = options.map(o =>
+    `<option value="${o}"${o === selected ? ' selected' : ''}>${o}</option>`
+  ).join('');
+  return `<select name="${name}" class="${IC}"><option value="">— select —</option>${opts}</select>`;
+}
+
+function refSel(name, artifacts, labelField, selectedId = '') {
+  let extra = '';
+  if (selectedId && !artifacts.find(a => a.id === selectedId)) {
+    extra = `<option value="${escHtml(selectedId)}" selected>${escHtml(selectedId)} (missing)</option>`;
+  }
+  const opts = artifacts.map(a =>
+    `<option value="${escHtml(a.id)}"${a.id === selectedId ? ' selected' : ''}>${escHtml(a.id)} — ${escHtml(a[labelField] || '')}</option>`
+  ).join('');
+  return `<select name="${name}" class="${IC}"><option value="">— none —</option>${extra}${opts}</select>`;
+}
+
+function tagIn(name, values = []) {
+  return `<input type="text" name="${name}" value="${escHtml(values.join(', '))}" placeholder="tag1, tag2, tag3" class="${IC}">`;
+}
+
+// ─── UTILITIES ──────────────────────────────────────────────────────────────
+
+function nextId(domain) {
+  const prefix = META[domain].idPrefix;
+  const nums = (state.artifacts[domain] || [])
+    .map(a => parseInt((a.id || '').replace(/\D/g, ''), 10))
+    .filter(n => !isNaN(n) && n > 0);
+  const max = nums.length ? Math.max(...nums) : 0;
+  return `${prefix}-${String(max + 1).padStart(3, '0')}`;
+}
+
+function badge(value) {
+  if (!value) return '';
+  const cls = BADGE_COLORS[value] || 'bg-slate-100 text-slate-600';
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}">${escHtml(value)}</span>`;
+}
+
+function escHtml(val) {
+  if (val === null || val === undefined) return '';
+  return String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `fixed bottom-6 right-6 max-w-sm px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50 ${
+    type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white'
+  }`;
+  el.classList.remove('hidden');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// ─── START ──────────────────────────────────────────────────────────────────
+
+init();
+</script>
+</body>
+</html>
