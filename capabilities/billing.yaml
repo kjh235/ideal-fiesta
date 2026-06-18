@@ -1,0 +1,13 @@
+id: CAP-102
+name: Customer Invoicing and Billing
+description: >
+  Capability to generate accurate and timely invoices for goods and services
+  delivered, manage billing cycles, and handle billing disputes and adjustments.
+level: 2
+status: active
+maturity: 2
+parent_id: CAP-100
+tags:
+  - billing
+  - finance
+  - invoicing

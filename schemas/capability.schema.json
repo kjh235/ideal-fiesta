@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/schemas/capability.schema.json",
+  "title": "Business Capability",
+  "type": "object",
+  "required": ["id", "name", "description", "level", "status", "maturity"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CAP-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "proposed", "deprecated", "sunset"]
+    },
+    "maturity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "parent_id": {
+      "type": "string",
+      "pattern": "^CAP-[0-9]{3}$"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

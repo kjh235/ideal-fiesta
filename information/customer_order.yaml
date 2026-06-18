@@ -1,0 +1,16 @@
+id: INF-301
+term: Customer Order
+definition: >
+  A formal request from a customer to purchase specified goods or services
+  at agreed prices and delivery terms, creating a contractual obligation
+  for the organisation to fulfil.
+confidentiality: internal
+attributes:
+  - order_number
+  - order_date
+  - customer_id
+  - line_items
+  - delivery_address
+  - requested_delivery_date
+  - order_status
+owner_org_id: ORG-400

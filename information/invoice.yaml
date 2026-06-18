@@ -1,0 +1,17 @@
+id: INF-312
+term: Invoice
+definition: >
+  A time-stamped commercial document issued by a seller to a buyer,
+  itemising the goods or services provided and the amount owed,
+  serving as the legal demand for payment.
+confidentiality: internal
+attributes:
+  - invoice_number
+  - invoice_date
+  - due_date
+  - line_items
+  - total_amount
+  - tax_amount
+  - payment_terms
+  - billing_address
+owner_org_id: ORG-405

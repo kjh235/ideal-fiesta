@@ -1,0 +1,37 @@
+id: VS-001
+name: Lead to Order
+trigger: >
+  A prospective customer expresses interest in the organisation's products
+  or services, initiating the sales engagement process.
+outcome: >
+  A confirmed customer order is created in the order management system,
+  ready to be fulfilled.
+stages:
+  - sequence: 1
+    stage_name: Lead Qualification
+    description: >
+      Assess and qualify the inbound or outbound lead against ideal customer
+      profile criteria to determine opportunity viability.
+    supporting_capabilities:
+      - CAP-089
+  - sequence: 2
+    stage_name: Proposal and Quoting
+    description: >
+      Develop a tailored commercial proposal or quote that meets the
+      customer's requirements and the organisation's margin targets.
+    supporting_capabilities:
+      - CAP-089
+  - sequence: 3
+    stage_name: Contract and Acceptance
+    description: >
+      Negotiate, agree, and execute the commercial contract or purchase
+      order with the customer.
+    supporting_capabilities:
+      - CAP-089
+  - sequence: 4
+    stage_name: Order Creation
+    description: >
+      Translate the accepted contract into a confirmed order record that
+      triggers fulfilment activities.
+    supporting_capabilities:
+      - CAP-089

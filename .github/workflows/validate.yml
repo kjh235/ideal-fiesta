@@ -1,0 +1,126 @@
+name: Validate Architecture Artefacts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Lint and Validate YAML Artefacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install yamllint==1.35.1 pyyaml==6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli@5.0.0
+
+      - name: Lint YAML syntax
+        run: |
+          yamllint -d relaxed capabilities/ organization/ value-streams/ information/ \
+            2>&1 | tee yamllint-report.txt
+          if grep -q "error" yamllint-report.txt; then
+            echo "yamllint found errors — see report above"
+            exit 1
+          fi
+
+      - name: Validate capabilities
+        run: |
+          for f in capabilities/*.yaml; do
+            echo "Validating $f"
+            python3 -c "
+          import sys, yaml, json
+          with open('$f') as fh:
+              data = yaml.safe_load(fh)
+          with open('/tmp/converted.json', 'w') as out:
+              json.dump(data, out)
+          "
+            ajv validate \
+              -s schemas/capability.schema.json \
+              -d /tmp/converted.json \
+              --spec=draft7 \
+              --all-errors \
+              --errors=json
+          done
+
+      - name: Validate organisation units
+        run: |
+          for f in organization/*.yaml; do
+            echo "Validating $f"
+            python3 -c "
+          import sys, yaml, json
+          with open('$f') as fh:
+              data = yaml.safe_load(fh)
+          with open('/tmp/converted.json', 'w') as out:
+              json.dump(data, out)
+          "
+            ajv validate \
+              -s schemas/organization.schema.json \
+              -d /tmp/converted.json \
+              --spec=draft7 \
+              --all-errors \
+              --errors=json
+          done
+
+      - name: Validate value streams
+        run: |
+          for f in value-streams/*.yaml; do
+            echo "Validating $f"
+            python3 -c "
+          import sys, yaml, json
+          with open('$f') as fh:
+              data = yaml.safe_load(fh)
+          with open('/tmp/converted.json', 'w') as out:
+              json.dump(data, out)
+          "
+            ajv validate \
+              -s schemas/valuestream.schema.json \
+              -d /tmp/converted.json \
+              --spec=draft7 \
+              --all-errors \
+              --errors=json
+          done
+
+      - name: Validate information concepts
+        run: |
+          for f in information/*.yaml; do
+            echo "Validating $f"
+            python3 -c "
+          import sys, yaml, json
+          with open('$f') as fh:
+              data = yaml.safe_load(fh)
+          with open('/tmp/converted.json', 'w') as out:
+              json.dump(data, out)
+          "
+            ajv validate \
+              -s schemas/information.schema.json \
+              -d /tmp/converted.json \
+              --spec=draft7 \
+              --all-errors \
+              --errors=json
+          done
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: yamllint-report.txt
+          retention-days: 30

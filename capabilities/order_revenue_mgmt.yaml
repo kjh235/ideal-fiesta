@@ -1,0 +1,12 @@
+id: CAP-100
+name: Order and Revenue Management
+description: >
+  The enterprise capability encompassing all activities from receiving a
+  customer order through to recognising and collecting the associated revenue.
+level: 1
+status: active
+maturity: 3
+tags:
+  - finance
+  - order
+  - revenue

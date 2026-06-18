@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/schemas/valuestream.schema.json",
+  "title": "Value Stream",
+  "type": "object",
+  "required": ["id", "name", "trigger", "outcome", "stages"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^VS-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 10
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["sequence", "stage_name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "stage_name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "supporting_capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^CAP-[0-9]{3}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

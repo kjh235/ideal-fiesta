@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph VS002["VS-002: Order to Cash"]
+        S1["1. Order Receipt\nCAP-089"]
+        S2["2. Order Fulfilment\nCAP-089"]
+        S3["3. Invoicing\nCAP-102"]
+        S4["4. Payment Collection\nCAP-102"]
+        S5["5. Revenue Recognition\nCAP-105"]
+    end
+
+    TRIGGER(["Confirmed Order\nReceived"]) --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> OUTCOME(["Cash Collected\nRevenue Recognised"])

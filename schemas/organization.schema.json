@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/schemas/organization.schema.json",
+  "title": "Organisation Unit",
+  "type": "object",
+  "required": ["id", "name", "type"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ORG-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "type": {
+      "type": "string",
+      "enum": ["division", "department", "team", "centre-of-excellence", "external"]
+    },
+    "lead": {
+      "type": "string"
+    },
+    "parent_org_id": {
+      "type": "string",
+      "pattern": "^ORG-[0-9]{3}$"
+    },
+    "cost_center": {
+      "type": "string"
+    }
+  }
+}

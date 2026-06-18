@@ -1,0 +1,6 @@
+id: ORG-405
+name: Finance Department
+type: department
+lead: VP Finance
+parent_org_id: ORG-400
+cost_center: CC-405

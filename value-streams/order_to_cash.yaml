@@ -1,0 +1,44 @@
+id: VS-002
+name: Order to Cash
+trigger: >
+  A confirmed customer order is received by the organisation, creating an
+  obligation to deliver goods or services and collect payment.
+outcome: >
+  Cash is collected from the customer and revenue is recognised in the
+  financial statements in compliance with applicable accounting standards.
+stages:
+  - sequence: 1
+    stage_name: Order Receipt
+    description: >
+      Validate and accept the incoming customer order, confirming product
+      availability and delivery commitment.
+    supporting_capabilities:
+      - CAP-089
+  - sequence: 2
+    stage_name: Order Fulfilment
+    description: >
+      Pick, pack, and ship physical goods, or provision and deliver
+      services as specified in the order.
+    supporting_capabilities:
+      - CAP-089
+  - sequence: 3
+    stage_name: Invoicing
+    description: >
+      Generate and dispatch an accurate invoice to the customer upon
+      delivery of goods or completion of services.
+    supporting_capabilities:
+      - CAP-102
+  - sequence: 4
+    stage_name: Payment Collection
+    description: >
+      Monitor receivables, chase overdue payments, and apply cash receipts
+      against open invoices.
+    supporting_capabilities:
+      - CAP-102
+  - sequence: 5
+    stage_name: Revenue Recognition
+    description: >
+      Apply the appropriate accounting policy to recognise revenue in the
+      correct period and amount.
+    supporting_capabilities:
+      - CAP-105
