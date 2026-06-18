@@ -1,0 +1,13 @@
+id: CAP-105
+name: Revenue Recognition
+description: >
+  Capability to apply accounting standards (IFRS 15 / ASC 606) to determine
+  when and how much revenue to recognise from customer contracts.
+level: 2
+status: active
+maturity: 2
+parent_id: CAP-100
+tags:
+  - finance
+  - accounting
+  - revenue

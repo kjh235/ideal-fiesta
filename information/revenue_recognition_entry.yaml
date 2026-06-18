@@ -1,0 +1,16 @@
+id: INF-320
+term: Revenue Recognition Entry
+definition: >
+  An accounting entry that records the transfer of a performance obligation
+  to a customer and recognises the corresponding revenue in the income
+  statement under IFRS 15 or ASC 606.
+confidentiality: confidential
+attributes:
+  - journal_entry_id
+  - recognition_date
+  - contract_id
+  - performance_obligation_id
+  - recognised_amount
+  - currency
+  - accounting_period
+owner_org_id: ORG-405
