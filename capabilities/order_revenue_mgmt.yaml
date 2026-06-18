@@ -10,3 +10,39 @@ tags:
   - finance
   - order
   - revenue
+capabilities:
+  - id: CAP-089
+    name: Order Management
+    description: >
+      Capability to receive, validate, prioritise, and fulfil customer orders
+      across all channels, ensuring accurate promise dates and order tracking.
+    level: 2
+    status: active
+    maturity: 3
+    tags:
+      - order
+      - fulfilment
+  - id: CAP-102
+    name: Customer Invoicing and Billing
+    description: >
+      Capability to generate accurate and timely invoices for goods and services
+      delivered, manage billing cycles, and handle billing disputes and adjustments.
+    level: 2
+    status: active
+    maturity: 2
+    tags:
+      - billing
+      - finance
+      - invoicing
+  - id: CAP-105
+    name: Revenue Recognition
+    description: >
+      Capability to apply accounting standards (IFRS 15 / ASC 606) to determine
+      when and how much revenue to recognise from customer contracts.
+    level: 2
+    status: active
+    maturity: 2
+    tags:
+      - finance
+      - accounting
+      - revenue
